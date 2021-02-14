@@ -1,1 +1,4 @@
-console.log('This is working.... Nice...');
+import FirebaseService from "./services/FirebaseService";
+
+
+export default FirebaseService;

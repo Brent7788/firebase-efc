@@ -1,5 +1,5 @@
 {
-  "name": "firestore-efc",
+  "name": "firebase-efc",
   "version": "0.1.0",
   "description": "Firebase Entity Framework Core design in typescript",
   "main": "index.js",
