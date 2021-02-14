@@ -1,12 +1,13 @@
 {
   "name": "firebase-efc",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Firebase Entity Framework Core design in typescript",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev --respawn src/index.ts",
-    "build": "tsc -t es5"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
