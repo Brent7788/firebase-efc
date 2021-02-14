@@ -1,0 +1,31 @@
+{
+  "name": "firestore-efc",
+  "version": "0.1.0",
+  "description": "Firebase Entity Framework Core design in typescript",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Brent7788/firebase-efc.git"
+  },
+  "author": "Brent Steyn",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Brent7788/firebase-efc/issues"
+  },
+  "homepage": "https://github.com/Brent7788/firebase-efc#readme",
+  "devDependencies": {
+    "guid-typescript": "^1.0.9",
+    "reflect-metadata": "^0.1.13",
+    "ts-node": "^9.1.1",
+    "ts-node-dev": "^1.1.1",
+    "typescript": "^4.1.5"
+  },
+  "dependencies": {
+    "firebase": "^8.2.7"
+  }
+}
