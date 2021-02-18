@@ -10,19 +10,6 @@ import Firestore = firebase.firestore.Firestore;
 import WriteBatch = firebase.firestore.WriteBatch;
 import Condition from "./tools/Condition";
 
-//TODO Do not push this
-const firebaseConfig = {
-    apiKey: "AIzaSyBMD1RAOIUVes_0ztO2c0oIjpElwpvL6Ck",
-    authDomain: "first-look-talent.firebaseapp.com",
-    projectId: "first-look-talent",
-    storageBucket: "first-look-talent.appspot.com",
-    messagingSenderId: "249876831683",
-    appId: "1:249876831683:web:51da092eb11e982203f176"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-
 export default class DbFirestore<T extends AbstractEntity> {
 
     private db: Firestore;
