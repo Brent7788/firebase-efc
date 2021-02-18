@@ -1,5 +1,7 @@
 import "reflect-metadata";
 
+//TODO All of these decorator do the same
+
 /* This will prevent field from being save/store in firebase database
 * */
 export function IgnoreField(): PropertyDecorator {
@@ -13,6 +15,14 @@ export function IgnoreField(): PropertyDecorator {
 export function ObjectField(): PropertyDecorator {
     return function (target: Object, key: string | symbol) {
         createMetadata(key, target, "ObjectField");
+    }
+}
+
+/* This will convert field into object
+* */
+export function DbSet(): PropertyDecorator {
+    return function (target: Object, key: string | symbol) {
+        createMetadata(key, target, "DbSet");
     }
 }
 
