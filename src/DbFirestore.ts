@@ -9,6 +9,7 @@ import Query = firebase.firestore.Query;
 import Firestore = firebase.firestore.Firestore;
 import WriteBatch = firebase.firestore.WriteBatch;
 import Condition from "./tools/Condition";
+import ObservableEntity from "./tools/ObservableEntity";
 
 export default class DbFirestore<T extends AbstractEntity> {
 
@@ -21,8 +22,8 @@ export default class DbFirestore<T extends AbstractEntity> {
     private queries: Query<DocumentData>[] = [];
 
     public writeError = false;
-    //TODO Find better name for this
-    public isInConcurrently = false;
+    public isRunConcurrently = false;
+    public observableEntities: ObservableEntity<T>[] = [];
 
     constructor(type: (new () => T), entity: T, db: Firestore, batch: WriteBatch) {
         this.type = type;
@@ -34,13 +35,13 @@ export default class DbFirestore<T extends AbstractEntity> {
     }
 
     public where(expresion: (entity: T) => ExpresionBuilder): DbFirestore<T> {
-        this.isInConcurrently = true;
+        this.isRunConcurrently = true;
         this.setQueries(expresion(this.entity).prosesExpresionSet());
         return this;
     }
 
     public async firstOrDefaultAsync(expresion: (entity: T) => ExpresionBuilder): Promise<T | undefined> {
-        this.isInConcurrently = true;
+        this.isRunConcurrently = true;
         const exp: ExpresionBuilder = expresion(this.entity).prosesExpresionSet();
 
         if (exp.conditionState === ConditionState.START &&
@@ -74,68 +75,18 @@ export default class DbFirestore<T extends AbstractEntity> {
         //     objects in the entity will be undefined
         for await (const querySnapshot of querySnapshotPromises) {
             for (const doc of (await querySnapshot).docs) {
-                entities.push(Object.assign(new this.type(), doc.data()));
+                //entities.push({...new this.type(), ...doc.data()});
+                //const entity = Object.assign(new this.type(), doc.data());
+                const observableEntity = new ObservableEntity<T>(Object.assign(new this.type(), doc.data()));
+
+                entities.push(observableEntity.getObserveEntity());
+                this.observableEntities.push(observableEntity);
             }
         }
 
         this.queries = [];
-        this.isInConcurrently = false;
+        this.isRunConcurrently = false;
         return entities;
-    }
-
-
-    public set(entity: T | undefined, wait = false): void {
-
-        this.validateEntityBeforeWrite(entity);
-
-        this.shouldWait(wait, () => {
-            const ref = this.collectionRef
-                .doc((<T>entity).id);
-
-            this.batch.set(ref, (<T>entity).asObject());
-        });
-    }
-
-    public update(entity: T | undefined): void {
-
-        this.validateEntityBeforeWrite(entity);
-
-        const ref = this.collectionRef
-            .doc((<T>entity).id);
-
-        this.batch.update(ref, (<T>entity).asObject());
-    }
-
-    public delete(entity: T | undefined): void {
-
-        this.validateEntityBeforeWrite(entity);
-
-        const ref = this.collectionRef
-            .doc((<T>entity).id);
-
-        this.batch.delete(ref);
-    }
-
-    private validateEntityBeforeWrite(entity: T | undefined) {
-        if (!entity) {
-            this.writeError = true;
-            throw new Error(`Please provide entity(${this.entityName})`);
-        }
-
-        if (!entity.id) {
-            this.writeError = true;
-            throw new Error(`Entity(${this.entityName}) doesn't have unique identifier(id)`);
-        }
-    }
-
-    //TODO This is workaround for firebase bug. Data wound save in async function or call back function.
-    //     after waiting for one second, then data save.
-    private shouldWait(wait: boolean, func: () => void): void {
-        if (wait) {
-            setTimeout(func, 1000);
-        } else {
-            func();
-        }
     }
 
     private setQueries(exp: ExpresionBuilder): void {

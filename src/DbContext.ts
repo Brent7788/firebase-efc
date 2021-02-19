@@ -2,6 +2,7 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import DbFirestore from "./DbFirestore";
 import DecoratorTool from "./tools/DecoratorTool";
+import AbstractEntity from "./entities/AbstractEntity";
 
 export default class DbContext {
 
@@ -10,6 +11,9 @@ export default class DbContext {
     private dbSetFieldNames = DecoratorTool.getMyPropertyDecoratorValues(this.constructor, "DbSet");
     private fetchTimeOut = 3000;
     private check: any;
+    private longRunningThread = false;
+
+    public writeError = false;
 
     constructor() {
     }
@@ -18,7 +22,6 @@ export default class DbContext {
         if (types) {
             for (const type of types) {
                 let entity = new type();
-                console.log("Inter", entity.constructor.name);
                 for (let dbSetName of this.dbSetFieldNames) {
                     if (entity.constructor.name === this.capitalizeFirstLetter(dbSetName)) {
                         (<any>this)[dbSetName] = new DbFirestore(type, entity, this.db, this.batch);
@@ -29,8 +32,51 @@ export default class DbContext {
         }
     }
 
-    private capitalizeFirstLetter(str: any): string {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+    public set<T extends AbstractEntity>(entity: T | undefined, wait = false): void {
+
+        this.validateEntityBeforeWrite(entity);
+
+        this.shouldWait(wait, () => {
+            const ref = this.db.collection((<T>entity).constructor.name)
+                .doc((<T>entity).id);
+
+            this.batch.set(ref, (<T>entity).asObject());
+        });
+    }
+
+    private update<T extends AbstractEntity>(entity: T | undefined): void {
+
+        this.validateEntityBeforeWrite(entity);
+
+        const ref = this.db.collection((<T>entity).constructor.name)
+            .doc((<T>entity).id);
+
+        this.batch.update(ref, (<T>entity).asObject());
+    }
+
+    public delete<T extends AbstractEntity>(entity: T | undefined): void {
+
+        this.validateEntityBeforeWrite(entity);
+
+        const ref = this.db.collection((<T>entity).constructor.name)
+            .doc((<T>entity).id);
+
+        this.batch.delete(ref);
+    }
+
+    //TODO There is a problem with long running code that is going to be updated
+    //     It does not update
+    public handleLongRunningCode(running: () => Promise<void>): void {
+        this.longRunningThread = true;
+
+        running().then(value => {
+            console.log('AM I DONE', value);
+            this.longRunningThread = false;
+        }).catch(error => {
+            this.writeError = true;
+            this.longRunningThread = false;
+            console.error(error);
+        })
     }
 
     public async saveChangesAsync() {
@@ -51,23 +97,26 @@ export default class DbContext {
                 this.check = setInterval(async () =>  {
                     try {
                         test++;
+                        console.log("hello" , test, this.writeError, alreadyCommitted, this.longRunningThread);
+                        if (!this.longRunningThread && !alreadyCommitted) {
+                            const stillRun = dbSets.filter(dbSet => dbSet.isRunConcurrently);
 
-                        const stillRun = dbSets.filter(dbSet => dbSet.isInConcurrently);
+                            if (stillRun.length === 0 && !alreadyCommitted) {
 
-                        console.log("hello" , stillRun.length, test);
-                        if (stillRun.length === 0) {
-                            const writeErrors = dbSets.filter(dbSet => dbSet.writeError)
-                            if (writeErrors.length === 0 && !alreadyCommitted) {
-                                alreadyCommitted = true;
-                                await this.batch.commit()
+                                this.updateObservableEntities(dbSets);
+
+                                if (!this.writeError && !alreadyCommitted) {
+                                    alreadyCommitted = true;
+                                    await this.batch.commit()
+                                }
+                                clearInterval(this.check);
                             }
-                            clearInterval(this.check);
                         }
                     } catch (error) {
                         clearInterval(this.check);
                         reject(`Unable to save changes, ${error}`);
                     }
-                });
+                }, 50);
             } catch (error) {
                 reject(`Unable to save changes, ${error}`)
             }
@@ -76,5 +125,42 @@ export default class DbContext {
 
     private getDbSets(): DbFirestore<any>[] {
         return this.dbSetFieldNames.map(dbSetFieldName => <DbFirestore<any>>(<any>this)[dbSetFieldName]);
+    }
+
+    private updateObservableEntities(dbSets: DbFirestore<any>[]): void {
+        const entitiesToUpdate = dbSets
+            .map(dbSet => dbSet.observableEntities.filter(o => o.haveEntityChanged))
+            .flat();
+
+        for (const entitiesToUpdateElement of entitiesToUpdate) {
+            this.update(entitiesToUpdateElement.entity);
+        }
+    }
+
+    private validateEntityBeforeWrite<T extends AbstractEntity>(entity: T | undefined) {
+        if (!entity) {
+            this.writeError = true;
+            //TODO Improve error message
+            throw new Error(`Please provide entity to write`);
+        }
+
+        if (!entity.id) {
+            this.writeError = true;
+            throw new Error(`Entity(${(<T>entity).constructor.name}) doesn't have unique identifier(id)`);
+        }
+    }
+
+    //TODO This is workaround for firebase bug. Data wound save in async function or call back function.
+    //     after waiting for one second, then data save.
+    private shouldWait(wait: boolean, func: () => void): void {
+        if (wait) {
+            setTimeout(func, 1000);
+        } else {
+            func();
+        }
+    }
+
+    private capitalizeFirstLetter(str: any): string {
+        return str.charAt(0).toUpperCase() + str.slice(1);
     }
 }

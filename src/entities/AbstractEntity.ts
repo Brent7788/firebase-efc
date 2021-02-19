@@ -1,5 +1,6 @@
 import {Guid} from "guid-typescript";
 import DecoratorTool from "../tools/DecoratorTool";
+import {ExpresionBuilder} from "../tools/ExpresionBuilder";
 
 export default class AbstractEntity {
 
@@ -34,6 +35,10 @@ export default class AbstractEntity {
         }
 
         return object;
+    }
+
+    public exp(): ExpresionBuilder {
+        return new ExpresionBuilder();
     }
 
     get id(): string | undefined {
