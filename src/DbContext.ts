@@ -1,4 +1,5 @@
 import firebase from "firebase/app";
+import "firebase/auth";
 import "firebase/firestore";
 import DbFirestore from "./DbFirestore";
 import AbstractEntity from "./entities/AbstractEntity";
@@ -6,6 +7,7 @@ import AbstractEntity from "./entities/AbstractEntity";
 export default class DbContext {
 
     private readonly db;
+    private auth;
     private readonly batch;
     //private dbSetFieldNames = DecoratorTool.getMyPropertyDecoratorValues(this.constructor, "DbSet");
     private dbSetFieldNames: string[] = [];
@@ -15,9 +17,12 @@ export default class DbContext {
 
     public writeError = false;
 
-    constructor(firebaseConfig: any) {
-        firebase.initializeApp(firebaseConfig);
+    constructor(firebaseConfig: any | undefined = undefined) {
+        if (firebaseConfig)
+            firebase.initializeApp(firebaseConfig);
+
         this.db = firebase.firestore();
+        this.auth = firebase.auth();
         this.batch = this.db.batch();
     }
 
@@ -88,7 +93,7 @@ export default class DbContext {
 
     public async saveChangesAsync() {
         let test = 0;
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<boolean>((resolve, reject) => {
             try {
                 const dbSets = this.getDbSets().filter(dbSet => dbSet);
 
@@ -115,6 +120,7 @@ export default class DbContext {
                                 if (!this.writeError && !alreadyCommitted) {
                                     alreadyCommitted = true;
                                     await this.batch.commit()
+                                    resolve(true);
                                 }
                                 clearInterval(this.check);
                             }
