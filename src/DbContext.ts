@@ -1,33 +1,40 @@
 import firebase from "firebase/app";
 import "firebase/firestore";
 import DbFirestore from "./DbFirestore";
-import DecoratorTool from "./tools/DecoratorTool";
 import AbstractEntity from "./entities/AbstractEntity";
 
 export default class DbContext {
 
-    private db = firebase.firestore();
-    private batch = this.db.batch();
-    private dbSetFieldNames = DecoratorTool.getMyPropertyDecoratorValues(this.constructor, "DbSet");
+    private readonly db;
+    private readonly batch;
+    //private dbSetFieldNames = DecoratorTool.getMyPropertyDecoratorValues(this.constructor, "DbSet");
+    private dbSetFieldNames: string[] = [];
     private fetchTimeOut = 3000;
     private check: any;
     private longRunningThread = false;
 
     public writeError = false;
 
-    constructor() {
+    constructor(firebaseConfig: any) {
+        firebase.initializeApp(firebaseConfig);
+        this.db = firebase.firestore();
+        this.batch = this.db.batch();
     }
 
     protected initializeDbFireStore(types: (new () => any)[]): void {
         if (types) {
             for (const type of types) {
                 let entity = new type();
-                for (let dbSetName of this.dbSetFieldNames) {
+                /*for (let dbSetName of this.dbSetFieldNames) {
+                    console.log(dbSetName, entity.constructor.name);
                     if (entity.constructor.name === this.capitalizeFirstLetter(dbSetName)) {
                         (<any>this)[dbSetName] = new DbFirestore(type, entity, this.db, this.batch);
                     }
-                    console.log(this.capitalizeFirstLetter(dbSetName));
-                }
+                }*/
+                const dbSetFieldName = this.lowercaseFirstLetter(entity.constructor.name);
+                console.log(dbSetFieldName);
+                (<any>this)[dbSetFieldName] = new DbFirestore(type, entity, this.db, this.batch);
+                this.dbSetFieldNames.push(dbSetFieldName);
             }
         }
     }
@@ -94,10 +101,10 @@ export default class DbContext {
 
                 let alreadyCommitted = false;
                 //TODO This mite not be a good idea
-                this.check = setInterval(async () =>  {
+                this.check = setInterval(async () => {
                     try {
-                        test++;
-                        console.log("hello" , test, this.writeError, alreadyCommitted, this.longRunningThread);
+                        /*test++;
+                        console.log("hello", test, this.writeError, alreadyCommitted, this.longRunningThread);*/
                         if (!this.longRunningThread && !alreadyCommitted) {
                             const stillRun = dbSets.filter(dbSet => dbSet.isRunConcurrently);
 
@@ -160,7 +167,7 @@ export default class DbContext {
         }
     }
 
-    private capitalizeFirstLetter(str: any): string {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+    private lowercaseFirstLetter(str: any): string {
+        return str.charAt(0).toLowerCase() + str.slice(1);
     }
 }

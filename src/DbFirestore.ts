@@ -21,7 +21,6 @@ export default class DbFirestore<T extends AbstractEntity> {
     private readonly collectionRef: CollectionReference<DocumentData>;
     private queries: Query<DocumentData>[] = [];
 
-    public writeError = false;
     public isRunConcurrently = false;
     public observableEntities: ObservableEntity<T>[] = [];
 
@@ -54,7 +53,9 @@ export default class DbFirestore<T extends AbstractEntity> {
             if (!documentSnapshot.exists) {
                 return undefined;
             } else {
-                return Object.assign(new this.type(), documentSnapshot.data());
+                const observableEntity = new ObservableEntity<T>(Object.assign(new this.type(), documentSnapshot.data()));
+                this.observableEntities.push(observableEntity);
+                return observableEntity.getObserveEntity();
             }
         } else {
             this.setQueries(exp);
