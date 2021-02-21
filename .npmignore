@@ -23,3 +23,5 @@ typings/
 tester
 
 src/
+
+tsconfig.json

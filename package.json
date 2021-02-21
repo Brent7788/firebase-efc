@@ -1,6 +1,6 @@
 {
   "name": "firebase-efc",
-  "version": "0.28.0",
+  "version": "0.28.4",
   "description": "Firebase Entity Framework Core design in typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,13 +22,16 @@
   "homepage": "https://github.com/Brent7788/firebase-efc#readme",
   "devDependencies": {
     "guid-typescript": "^1.0.9",
-    "on-change": "^2.2.3",
-    "reflect-metadata": "^0.1.13",
     "ts-node": "^9.1.1",
     "ts-node-dev": "^1.1.1",
     "typescript": "^4.1.5"
   },
   "dependencies": {
-    "firebase": "^8.2.7"
-  }
+    "firebase": "^8.2.7",
+    "on-change": "^2.2.3",
+    "reflect-metadata": "^0.1.13"
+  },
+  "files": [
+    "dist/**/*"
+  ]
 }

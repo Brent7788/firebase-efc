@@ -6,10 +6,9 @@ import AbstractEntity from "./entities/AbstractEntity";
 
 export default class DbContext {
 
-    private readonly db;
-    private auth;
-    private readonly batch;
-    //private dbSetFieldNames = DecoratorTool.getMyPropertyDecoratorValues(this.constructor, "DbSet");
+    private readonly db = firebase.firestore();
+    public auth = firebase.auth();
+    private readonly batch = this.db.batch();
     private dbSetFieldNames: string[] = [];
     private fetchTimeOut = 3000;
     private check: any;
@@ -17,25 +16,13 @@ export default class DbContext {
 
     public writeError = false;
 
-    constructor(firebaseConfig: any | undefined = undefined) {
-        if (firebaseConfig)
-            firebase.initializeApp(firebaseConfig);
-
-        this.db = firebase.firestore();
-        this.auth = firebase.auth();
-        this.batch = this.db.batch();
+    constructor() {
     }
 
     protected initializeDbFireStore(types: (new () => any)[]): void {
         if (types) {
             for (const type of types) {
                 let entity = new type();
-                /*for (let dbSetName of this.dbSetFieldNames) {
-                    console.log(dbSetName, entity.constructor.name);
-                    if (entity.constructor.name === this.capitalizeFirstLetter(dbSetName)) {
-                        (<any>this)[dbSetName] = new DbFirestore(type, entity, this.db, this.batch);
-                    }
-                }*/
                 const dbSetFieldName = this.lowercaseFirstLetter(entity.constructor.name);
                 console.log(dbSetFieldName);
                 (<any>this)[dbSetFieldName] = new DbFirestore(type, entity, this.db, this.batch);
@@ -91,8 +78,11 @@ export default class DbContext {
         })
     }
 
-    public async saveChangesAsync() {
-        let test = 0;
+    public async saveChangesAsync () {
+        return this.batch.commit();
+    }
+
+    public async expensivelySaveChangesAsync() {
         return new Promise<boolean>((resolve, reject) => {
             try {
                 const dbSets = this.getDbSets().filter(dbSet => dbSet);
@@ -105,11 +95,9 @@ export default class DbContext {
                 }, this.fetchTimeOut);
 
                 let alreadyCommitted = false;
-                //TODO This mite not be a good idea
+                //TODO This mite not be a good idea, maybe use on-change to detect when is the right time to commit
                 this.check = setInterval(async () => {
                     try {
-                        /*test++;
-                        console.log("hello", test, this.writeError, alreadyCommitted, this.longRunningThread);*/
                         if (!this.longRunningThread && !alreadyCommitted) {
                             const stillRun = dbSets.filter(dbSet => dbSet.isRunConcurrently);
 
