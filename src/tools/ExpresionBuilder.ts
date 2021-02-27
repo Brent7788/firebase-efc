@@ -76,8 +76,8 @@ export class ExpresionBuilder {
             if (split.length < 2 || split.length > 2)
                 throw new Error(`Unable to extract property out of function: ${propertyFun.toString()}`)
 
-            //TODO Mite not be good, I assume all field start with underscore
-            tempFieldAndValue.field = ("_" + split[1]);
+            //TODO Mite not be good, I assume all field is lowercase
+            tempFieldAndValue.field = (this.lowercaseFirstLetter(split[1]));
         } else {
             tempFieldAndValue.field = (propertyFun);
         }
@@ -129,6 +129,10 @@ export class ExpresionBuilder {
         }
 
         return this;
+    }
+
+    private lowercaseFirstLetter(str: any): string {
+        return str.charAt(0).toLowerCase() + str.slice(1);
     }
 
     public and(): ExpresionBuilder {

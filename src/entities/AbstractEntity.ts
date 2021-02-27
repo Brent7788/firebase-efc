@@ -4,16 +4,17 @@ import {ExpresionBuilder} from "../tools/ExpresionBuilder";
 
 export default class AbstractEntity {
 
-    private _id: string | undefined;
-    private _createdDate = new Date();
+    private id: string | undefined;
+    private createdDate = new Date();
+    private fieldOrderNumber: number = -1;
 
     //TODO This ignoreId, create decorator for this
     constructor(ignoreIdGeneration = false, id: string | undefined = undefined) {
 
         if (id) {
-            this._id = id;
+            this.id = id;
         } else if (!ignoreIdGeneration) {
-            this._id = Guid.create().toString();
+            this.id = Guid.create().toString();
         }
     }
 
@@ -41,15 +42,23 @@ export default class AbstractEntity {
         return new ExpresionBuilder();
     }
 
-    get id(): string | undefined {
-        return this._id;
+    get Id(): string | undefined {
+        return this.id;
     }
 
-    set id(value: string | undefined) {
-        this._id = value;
+    set Id(value: string | undefined) {
+        this.id = value;
     }
 
-    set createdDate(value: Date) {
-        this._createdDate = value;
+    set CreatedDate(value: Date) {
+        this.createdDate = value;
+    }
+
+    get FieldOrderNumber(): number {
+        return this.fieldOrderNumber;
+    }
+
+    set FieldOrderNumber(value: number) {
+        this.fieldOrderNumber = value;
     }
 }
