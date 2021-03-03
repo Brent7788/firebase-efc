@@ -3,6 +3,7 @@ import "firebase/auth";
 import "firebase/firestore";
 import DbSet from "./DbSet";
 import AbstractEntity from "./entities/AbstractEntity";
+import EmulatorConfig from "./entities/EmulatorConfig";
 
 export default class DbContext {
 
@@ -13,10 +14,21 @@ export default class DbContext {
     private fetchTimeOut = 3000;
     private check: any;
     private longRunningThread = false;
+    private readonly addPagination: boolean;
 
     public writeError = false;
 
-    constructor() {
+    constructor(addPagination = false, emulatorConfig: EmulatorConfig | undefined = undefined) {
+        this.addPagination = addPagination;
+
+        if (emulatorConfig) {
+            if (emulatorConfig.authPort) {
+                this.db.useEmulator(emulatorConfig.localhost, emulatorConfig.authPort);
+            }
+            if (emulatorConfig.firestorePort) {
+                this.db.useEmulator(emulatorConfig.localhost, emulatorConfig.firestorePort);
+            }
+        }
     }
 
     protected initializeDbFireStore(types: (new () => any)[]): void {
@@ -36,7 +48,9 @@ export default class DbContext {
         this.validateEntityBeforeWrite(entity);
 
         const entityName = (<T>entity).constructor.name;
-        (<T>entity).FieldOrderNumber = await this.getLastFieldOrderNumber(entityName);
+
+        if (this.addPagination)
+            (<T>entity).FieldOrderNumber = await this.getLastFieldOrderNumber(entityName);
 
         const ref = this.db.collection((<T>entity).constructor.name)
             .doc((<T>entity).Id);
