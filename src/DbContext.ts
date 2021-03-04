@@ -7,9 +7,9 @@ import EmulatorConfig from "./entities/EmulatorConfig";
 
 export default class DbContext {
 
-    private readonly db = firebase.firestore();
+    private readonly db;
     public auth = firebase.auth();
-    private readonly batch = this.db.batch();
+    private readonly batch;
     private dbSetFieldNames: string[] = [];
     private fetchTimeOut = 3000;
     private check: any;
@@ -22,13 +22,18 @@ export default class DbContext {
         this.addPagination = addPagination;
 
         if (emulatorConfig) {
-            if (emulatorConfig.authPort) {
-                this.db.useEmulator(emulatorConfig.localhost, emulatorConfig.authPort);
-            }
             if (emulatorConfig.firestorePort) {
-                this.db.useEmulator(emulatorConfig.localhost, emulatorConfig.firestorePort);
+                firebase.firestore().useEmulator('localhost', 5002);
+            }
+
+            if (emulatorConfig.authPort) {
+                firebase.auth().useEmulator(`http://${emulatorConfig.localhost}:${emulatorConfig.authPort}`);
             }
         }
+
+        this.db = firebase.firestore();
+        this.batch = this.db.batch();
+        this.auth = firebase.auth();
     }
 
     protected initializeDbFireStore(types: (new () => any)[]): void {
