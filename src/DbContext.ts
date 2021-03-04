@@ -5,6 +5,8 @@ import DbSet from "./DbSet";
 import AbstractEntity from "./entities/AbstractEntity";
 import EmulatorConfig from "./entities/EmulatorConfig";
 
+let canConfigEmulator = true;
+
 export default class DbContext {
 
     private readonly db;
@@ -21,14 +23,16 @@ export default class DbContext {
     constructor(addPagination = false, emulatorConfig: EmulatorConfig | undefined = undefined) {
         this.addPagination = addPagination;
 
-        if (emulatorConfig) {
+        if (emulatorConfig && canConfigEmulator) {
             if (emulatorConfig.firestorePort) {
-                firebase.firestore().useEmulator('localhost', 5002);
+                firebase.firestore().useEmulator(emulatorConfig.localhost, emulatorConfig.firestorePort);
             }
 
             if (emulatorConfig.authPort) {
                 firebase.auth().useEmulator(`http://${emulatorConfig.localhost}:${emulatorConfig.authPort}`);
             }
+
+            canConfigEmulator = false;
         }
 
         this.db = firebase.firestore();
