@@ -4,7 +4,6 @@ import AbstractEntity from "./entities/AbstractEntity";
 import {ConditionState, Expresion, ExpresionBuilder} from "./tools/ExpresionBuilder";
 import CollectionReference = firebase.firestore.CollectionReference;
 import DocumentData = firebase.firestore.DocumentData;
-import WhereFilterOp = firebase.firestore.WhereFilterOp;
 import Query = firebase.firestore.Query;
 import Firestore = firebase.firestore.Firestore;
 import WriteBatch = firebase.firestore.WriteBatch;
@@ -12,6 +11,7 @@ import Condition from "./tools/Condition";
 import ObservableEntity from "./tools/ObservableEntity";
 import DbSetResult from "./DbSetResult";
 import DocumentSnapshot = firebase.firestore.DocumentSnapshot;
+import Convert from "./tools/Convert";
 
 export default class DbSet<T extends AbstractEntity> {
 
@@ -120,7 +120,7 @@ export default class DbSet<T extends AbstractEntity> {
 
     private setObservableEntity(doc: DocumentSnapshot): T {
         const observableEntity =
-            new ObservableEntity<T>(Object.assign(new this.type(), doc.data()));
+            new ObservableEntity<T>(Convert.objectTo<T>(doc.data(), new this.type()));
 
         this.observableEntities.push(observableEntity);
         return observableEntity.getObserveEntity();
@@ -145,11 +145,11 @@ export default class DbSet<T extends AbstractEntity> {
 
 
                     if (this.queries[queryIndex]) {
-                        this.queries[queryIndex] = this.queries[queryIndex].where(expressionObj.field, <WhereFilterOp>expressionObj.operator, expressionObj.value);
+                        this.queries[queryIndex] = this.queries[queryIndex].where(expressionObj.field, expressionObj.operator, expressionObj.value);
                     } else if(orderByWhat.length === expressions.length) {
-                        this.queries[queryIndex] = this.collectionRef.orderBy(this.FIELD_ORDER_NUMBER).where(expressionObj.field, <WhereFilterOp>expressionObj.operator, expressionObj.value);
+                        this.queries[queryIndex] = this.collectionRef.orderBy(this.FIELD_ORDER_NUMBER).where(expressionObj.field, expressionObj.operator, expressionObj.value);
                     } else {
-                        this.queries[queryIndex] = this.collectionRef.orderBy(expressionObj.field).where(expressionObj.field, <WhereFilterOp>expressionObj.operator, expressionObj.value);
+                        this.queries[queryIndex] = this.collectionRef.orderBy(expressionObj.field).where(expressionObj.field, expressionObj.operator, expressionObj.value);
                     }
                 }
                 queryIndex++;
@@ -167,9 +167,9 @@ export default class DbSet<T extends AbstractEntity> {
 
         if (orExpression.operator === "==" || orExpression.operator === "!=") {
 
-            this.queries.push(this.collectionRef.orderBy(this.FIELD_ORDER_NUMBER).where(orExpression.field, <WhereFilterOp>orExpression.operator, orExpression.value));
+            this.queries.push(this.collectionRef.orderBy(this.FIELD_ORDER_NUMBER).where(orExpression.field, orExpression.operator, orExpression.value));
         } else {
-            this.queries.push(this.collectionRef.where(orExpression.field, <WhereFilterOp>orExpression.operator, orExpression.value));
+            this.queries.push(this.collectionRef.where(orExpression.field, orExpression.operator, orExpression.value));
         }
     }
 }

@@ -1,4 +1,5 @@
 
+declare type Operator = "<" | "<=" | "==" | "!=" | ">=" | ">" | "array-contains" | "in" | "not-in" | "array-contains-any";
 
 export class ExpresionBuilder {
 
@@ -37,7 +38,7 @@ export class ExpresionBuilder {
         return this;
     }
 
-    private setUpExpresion(propertyFun: () => any, value: any, operator: string): void {
+    private setUpExpresion(propertyFun: () => any, value: any, operator: Operator): void {
 
         const tempFieldAndValue = new Expresion(this.conditionState, operator);
 
@@ -156,12 +157,12 @@ export class ExpresionGroup {
 
 export class Expresion {
     public conditionState: ConditionState;
-    public operator: string;
+    public operator: Operator;
     public isStartOfNewGroup = false;
     public field: string;
     public value: any;
 
-    constructor(conditionState: ConditionState, operator: string) {
+    constructor(conditionState: ConditionState, operator: Operator) {
         this.conditionState = conditionState;
         this.operator = operator;
     }
