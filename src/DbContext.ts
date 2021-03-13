@@ -4,14 +4,18 @@ import "firebase/firestore";
 import DbSet from "./DbSet";
 import AbstractEntity from "./entities/AbstractEntity";
 import EmulatorConfig from "./entities/EmulatorConfig";
+import DecoratorTool from "./tools/DecoratorTool";
+import Condition from "./tools/Condition";
+import StorageFile from "./entities/StorageFile";
 
 let canConfigEmulator = true;
 
 export default class DbContext {
 
     private readonly db;
-    public auth = firebase.auth();
+    public auth;
     private readonly batch;
+    private storageRef;
     private dbSetFieldNames: string[] = [];
     private fetchTimeOut = 3000;
     private check: any;
@@ -38,6 +42,7 @@ export default class DbContext {
         this.db = firebase.firestore();
         this.batch = this.db.batch();
         this.auth = firebase.auth();
+        this.storageRef = firebase.storage().ref();
     }
 
     protected initializeDbFireStore(types: (new () => any)[]): void {
@@ -56,6 +61,8 @@ export default class DbContext {
 
         this.validateEntityBeforeWrite(entity);
 
+        await this.prepareFileForUpload(entity);
+
         const entityName = (<T>entity).constructor.name;
 
         if (this.addPagination)
@@ -65,6 +72,10 @@ export default class DbContext {
             .doc((<T>entity).Id);
 
         this.batch.set(ref, (<T>entity).asObject());
+    }
+
+    public uploadFile(file: StorageFile) {
+        return this.storageRef.child(file.fullPath()).put(file.File);
     }
 
     private update<T extends AbstractEntity>(entity: T | undefined): void {
@@ -220,7 +231,7 @@ export default class DbContext {
             if (querySnapshot.empty) {
                 return 1;
             } else {
-                const entity =  querySnapshot.docs[0].data();
+                const entity = querySnapshot.docs[0].data();
                 console.log(entity.fieldOrderNumber);
 
                 if (entity.fieldOrderNumber === undefined ||
@@ -236,6 +247,29 @@ export default class DbContext {
             this.writeError = true;
             console.error("Unable to process pagination", error);
             throw new Error(`Unable to process pagination ${error}`);
+        }
+    }
+
+    private async prepareFileForUpload<T>(entity: T) {
+        const rowEntity = (<any>entity);
+        const fileValues = DecoratorTool.getMyPropertyDecoratorValues(rowEntity.constructor, "FileField");
+
+        console.log("filesss", fileValues);
+        for (const fileValue of fileValues) {
+            const file = (<StorageFile>rowEntity[fileValue]);
+
+            if (Condition.isNotUndefined(file) && Condition.isNotNull(file)) {
+                //this.storageFilesToUpload.push(file)
+                const up = this.uploadFile(file);
+
+                up.on("state_changed",
+                    () => {},
+                    (error) => {
+                    throw new Error(`Unable to save file. ${error.message}`)
+                    });
+
+               file.Url = await up.snapshot.ref.getDownloadURL();
+            }
         }
     }
 }
