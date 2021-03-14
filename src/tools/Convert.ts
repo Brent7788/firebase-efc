@@ -12,9 +12,6 @@ export default class Convert {
         let objectValues = DecoratorTool.getMyPropertyDecoratorValues(entity.constructor, "ObjectField");
         let ignoreField = DecoratorTool.getMyPropertyDecoratorValues(entity.constructor, "IgnoreField");
 
-        console.log("What",objectValues, ignoreField);
-
-        console.log(object, entity)
         for (const objectValue of objectValues) {
 
             if (Condition.hasSomeValue(object[objectValue.field])) {

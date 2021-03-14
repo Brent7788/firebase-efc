@@ -11,7 +11,7 @@ export default class StorageFile extends AbstractEntity{
     private url: string;
 
     @IgnoreField()
-    private file: Blob | Uint8Array | ArrayBuffer;
+    private file: Blob | Uint8Array | ArrayBuffer | string;
 
     @IgnoreField()
     private readonly noFileExtension: boolean;
@@ -68,7 +68,7 @@ export default class StorageFile extends AbstractEntity{
         return this.file;
     }
 
-    set File(value: Blob | Uint8Array | ArrayBuffer) {
+    set File(value: Blob | Uint8Array | ArrayBuffer | string) {
 
         if (Condition.isUndefined(value) || Condition.isNull(value))
             throw new Error("File Data not provided");

@@ -83,9 +83,7 @@ export default class DbSetResult<T extends AbstractEntity> {
                 entities.push(this.setObservableEntity(doc))
             }
 
-            console.log(querySnapshot.size === this._take);
-
-            if (this.take && querySnapshot.size === this._take) {
+            if (this._take && querySnapshot.size === this._take) {
                 break;
             } else if (this._take) {
                 this._take = this._take - querySnapshot.size;

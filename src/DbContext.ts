@@ -1,12 +1,14 @@
 import firebase from "firebase/app";
 import "firebase/auth";
 import "firebase/firestore";
+import "firebase/storage";
 import DbSet from "./DbSet";
 import AbstractEntity from "./entities/AbstractEntity";
 import EmulatorConfig from "./entities/EmulatorConfig";
 import DecoratorTool from "./tools/DecoratorTool";
 import Condition from "./tools/Condition";
 import StorageFile from "./entities/StorageFile";
+import UploadTask = firebase.storage.UploadTask;
 
 let canConfigEmulator = true;
 
@@ -50,7 +52,6 @@ export default class DbContext {
             for (const type of types) {
                 let entity = new type();
                 const dbSetFieldName = this.lowercaseFirstLetter(entity.constructor.name);
-                console.log(dbSetFieldName);
                 (<any>this)[dbSetFieldName] = new DbSet(type, entity, this.db, this.batch);
                 this.dbSetFieldNames.push(dbSetFieldName);
             }
@@ -75,6 +76,9 @@ export default class DbContext {
     }
 
     public uploadFile(file: StorageFile) {
+        if (typeof file.File === "string")
+            return this.storageRef.child(file.fullPath()).putString(file.File);
+
         return this.storageRef.child(file.fullPath()).put(file.File);
     }
 
@@ -254,22 +258,30 @@ export default class DbContext {
         const rowEntity = (<any>entity);
         const fileValues = DecoratorTool.getMyPropertyDecoratorValues(rowEntity.constructor, "FileField");
 
-        console.log("filesss", fileValues);
         for (const fileValue of fileValues) {
             const file = (<StorageFile>rowEntity[fileValue]);
 
             if (Condition.isNotUndefined(file) && Condition.isNotNull(file)) {
-                //this.storageFilesToUpload.push(file)
-                const up = this.uploadFile(file);
+                const task = this.uploadFile(file);
 
-                up.on("state_changed",
-                    () => {},
-                    (error) => {
-                    throw new Error(`Unable to save file. ${error.message}`)
-                    });
-
-               file.Url = await up.snapshot.ref.getDownloadURL();
+               file.Url = await this.uploadFileTask(task);
             }
         }
+    }
+
+    private async uploadFileTask(task: UploadTask) {
+        return new Promise<string>((resolve, reject) => {
+            task.on("state_changed",
+                () => {},
+                (error) => {
+                    reject(`Unable to save file. ${error.message}`)
+                },
+                () => {
+                    console.log("File is uplodade");
+                    task.snapshot.ref.getDownloadURL()
+                        .then(url => resolve(url))
+                        .catch(error => reject(error.message));
+                });
+        });
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "firebase-efc",
-  "version": "0.32.0",
+  "version": "0.32.5",
   "description": "Firebase Entity Framework Core design in typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,9 +29,9 @@
   },
   "dependencies": {
     "firebase": "^8.2.7",
+    "guid-typescript": "^1.0.9",
     "on-change": "^2.2.3",
-    "reflect-metadata": "^0.1.13",
-    "guid-typescript": "^1.0.9"
+    "reflect-metadata": "^0.1.13"
   },
   "files": [
     "dist/**/*"

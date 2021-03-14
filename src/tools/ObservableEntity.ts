@@ -14,13 +14,6 @@ export default class ObservableEntity<T extends AbstractEntity> {
         return onChange(this, function (path, value, previousValue, name) {
             if (!this["haveEntityChanged"])
                 this["haveEntityChanged"] = true;
-
-            console.log("Entity value cahnged", value, path);
-            /*console.log('Object changed:');
-            console.log('path:', path);
-            console.log('value:', value);
-            console.log('previousValue:', previousValue);
-            console.log('name:', name);*/
         }).entity;
     }
 }
