@@ -254,12 +254,24 @@ export default class DbContext {
         }
     }
 
-    private async prepareFileForUpload<T>(entity: T) {
-        const rowEntity = (<any>entity);
-        const fileValues = DecoratorTool.getMyPropertyDecoratorValues(rowEntity.constructor, "FileField");
+    private async prepareFileForUpload(entity: any) {
+        const entityKeys = Object.keys(entity);
 
+        for (const entityKey of entityKeys) {
+            if (entity[entityKey] && typeof entity[entityKey] === "object") {
+                await this.prepareFileForUpload(entity[entityKey]);
+            }
+        }
+
+        await this.searchFileToUpload(entity);
+    }
+
+    private async searchFileToUpload(entity: any) {
+        const fileValues = DecoratorTool.getMyPropertyDecoratorValues(entity.constructor, "FileField");
+
+        //TODO This should be more asynchronous
         for (const fileValue of fileValues) {
-            const file = (<StorageFile>rowEntity[fileValue]);
+            const file = (<StorageFile>entity[fileValue]);
 
             if (Condition.isNotUndefined(file) && Condition.isNotNull(file)) {
                 const task = this.uploadFile(file);
