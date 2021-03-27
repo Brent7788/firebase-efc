@@ -7,7 +7,7 @@ export default class AbstractEntity {
 
     private _id: string;
     private _createdDate = new Date();
-    private _fieldOrderNumber: number;
+    private _documentPosition: number;
 
     //TODO This ignoreId, create decorator for this
     constructor(ignoreIdGeneration = false, id: string | undefined = undefined) {
@@ -19,9 +19,10 @@ export default class AbstractEntity {
         }
     }
 
-    public asObject(): {} {
+    public asObject(ignoreValidation = false): {} {
 
-        this.validate();
+        if (!ignoreValidation)
+            this.validate();
 
         const object = <any>Object.assign({}, this);
 
@@ -30,7 +31,7 @@ export default class AbstractEntity {
         const objectKeys = Object.keys(object);
 
         objectKeys.forEach(key => {
-            this.handleInnerObject(object, key);
+            this.handleInnerObject(object, key, ignoreValidation);
         });
 
         return object;
@@ -44,7 +45,7 @@ export default class AbstractEntity {
         }
     }
 
-    private handleInnerObject(object: any, key: string): void {
+    private handleInnerObject(object: any, key: string, ignoreValidation: boolean): void {
         const isObject = typeof object[key] === "object" &&
             Condition.isNotUndefined(object[key]) &&
             Condition.isNotNull(object[key]);
@@ -57,11 +58,11 @@ export default class AbstractEntity {
 
         } else if (isObject && haveUnderscore && object[key].asObject) {
 
-            object[key.replace("_","")] = object[key].asObject();
+            object[key.replace("_","")] = object[key].asObject(ignoreValidation);
             delete object[key];
 
         } else if (isObject && object[key].asObject) {
-            object[key] = object[key].asObject();
+            object[key] = object[key].asObject(ignoreValidation);
 
         } else if (haveUnderscore) {
             object[key.replace("_","")] = object[key];
@@ -100,11 +101,11 @@ export default class AbstractEntity {
     set createdDate(value: Date) {
         this._createdDate = value;
     }
-    get fieldOrderNumber(): number {
-        return this._fieldOrderNumber;
+    get documentPosition(): number {
+        return this._documentPosition;
     }
 
-    set fieldOrderNumber(value: number) {
-        this._fieldOrderNumber = value;
+    set documentPosition(value: number) {
+        this._documentPosition = value;
     }
 }

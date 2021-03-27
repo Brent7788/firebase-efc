@@ -61,7 +61,7 @@ export default class DbContext {
         }
     }
 
-    public async set<T extends AbstractEntity>(entity: T | undefined) {
+    public async set<T extends AbstractEntity>(entity: T | undefined, ignoreValidation = false) {
 
         this.validateEntityBeforeWrite(entity);
 
@@ -71,13 +71,13 @@ export default class DbContext {
 
         if (this.addPagination) {
             this.entitySetCount++;
-            (<T>entity).fieldOrderNumber = await this.getLastFieldOrderNumber(entityName);
+            (<T>entity).documentPosition = await this.getLastDocumentPosition(entityName);
         }
 
         const ref = this.db.collection((<T>entity).constructor.name)
             .doc((<T>entity).id);
 
-        this.batch.set(ref, (<T>entity).asObject());
+        this.batch.set(ref, (<T>entity).asObject(ignoreValidation));
     }
 
     public uploadFile(file: StorageFile) {
@@ -88,9 +88,11 @@ export default class DbContext {
         return this.storageRef.child(file.fullPath()).put(file.rowData);
     }
 
-    private update<T extends AbstractEntity>(entity: T | undefined): void {
+    private async update<T extends AbstractEntity>(entity: T | undefined) {
 
         this.validateEntityBeforeWrite(entity);
+
+        await this.prepareFileForUpload(entity);
 
         const ref = this.db.collection((<T>entity).constructor.name)
             .doc((<T>entity).id);
@@ -108,21 +110,6 @@ export default class DbContext {
         this.batch.delete(ref);
     }
 
-    //TODO There is a problem with long running code that is going to be updated
-    //     It does not update
-    public handleLongRunningCode(running: () => Promise<void>): void {
-        this.longRunningThread = true;
-
-        running().then(value => {
-            console.log('AM I DONE', value);
-            this.longRunningThread = false;
-        }).catch(error => {
-            this.writeError = true;
-            this.longRunningThread = false;
-            console.error(error);
-        })
-    }
-
     //TODO Use a tracking system: https://docs.microsoft.com/en-us/ef/core/querying/tracking
     public async saveChangesAsync() {
 
@@ -137,7 +124,7 @@ export default class DbContext {
             if (dbSets.length === 0)
                 throw new Error("There is no entities to save");
 
-            this.updateObservableEntities(dbSets);
+            await this.updateObservableEntities(dbSets);
 
             return this.batch.commit();
         } catch (error) {
@@ -152,14 +139,18 @@ export default class DbContext {
         return this.dbSetFieldNames.map(dbSetFieldName => <DbSet<any>>(<any>this)[dbSetFieldName]);
     }
 
-    private updateObservableEntities(dbSets: DbSet<any>[]): void {
+    private async updateObservableEntities(dbSets: DbSet<any>[]) {
         const entitiesToUpdate = dbSets
             .map(dbSet => dbSet.observableEntities.filter(o => o.haveEntityChanged))
             .flat();
 
+        let updateAsPromises = [];
+
         for (const entitiesToUpdateElement of entitiesToUpdate) {
-            this.update(entitiesToUpdateElement.entity);
+            updateAsPromises.push(this.update(entitiesToUpdateElement.entity));
         }
+
+        await Promise.all(updateAsPromises);
     }
 
     private validateEntityBeforeWrite<T extends AbstractEntity>(entity: T | undefined) {
@@ -179,11 +170,11 @@ export default class DbContext {
         return str.charAt(0).toLowerCase() + str.slice(1);
     }
 
-    public async getLastFieldOrderNumber(entityName: string): Promise<number> {
+    public async getLastDocumentPosition(entityName: string): Promise<number> {
         try {
             const collectionReference = this.db.collection(entityName);
             const querySnapshot = await collectionReference
-                .orderBy("fieldOrderNumber")
+                .orderBy("documentPosition")
                 .limitToLast(1)
                 .get();
 
@@ -197,18 +188,18 @@ export default class DbContext {
 
             const entity = querySnapshot.docs[0].data();
 
-            if (entity.fieldOrderNumber === undefined ||
-                entity.fieldOrderNumber === null ||
-                isNaN(entity.fieldOrderNumber)) {
+            if (entity.documentPosition === undefined ||
+                entity.documentPosition === null ||
+                isNaN(entity.documentPosition)) {
 
                 throw new Error(`Entity with id: ${entity.id} field order number is undefined, null or NaN`);
             }
 
             if (this.entitySetCount > 1) {
-                return ++entity.fieldOrderNumber + (this.entitySetCount - 1);
+                return ++entity.documentPosition + (this.entitySetCount - 1);
             }
 
-            return ++entity.fieldOrderNumber;
+            return ++entity.documentPosition;
         } catch (error) {
             this.writeError = true;
             console.error("Unable to process pagination", error);
@@ -231,20 +222,20 @@ export default class DbContext {
     private async searchFileToUpload(entity: any) {
         const fileValues = DecoratorTool.getMyPropertyDecoratorValues(entity.constructor, "FileField");
 
+        //TODO Reduce the complexity
         for (const fileValue of fileValues) {
-            const rawFile = entity[fileValue];
+            const file = (<StorageFile>entity[fileValue]);
 
-            if (Condition.isNotUndefined(rawFile) && Condition.isNotNull(rawFile)) {
+            if (Condition.isNotUndefined(file) && Condition.isNotNull(file) && Condition.hasSomeValue(file.rowData)) {
 
-                if (!Array.isArray(rawFile)) {
-                    const file = (<StorageFile>rawFile);
+                if (!Array.isArray(file)) {
                     const task = this.uploadFile(file);
                     file.url = await this.uploadFileTask(task);
                     continue;
                 }
 
                 //TODO I haven't tested this yet
-                const files = (<StorageFile[]>rawFile);
+                const files = (<StorageFile[]>file);
                 const urlPromises = new Array<Promise<string>>();
 
                 files.forEach((file) => {
@@ -260,6 +251,8 @@ export default class DbContext {
                 for (let i = 0; i < urls.length; i++) {
                     files[i].url = urls[i];
                 }
+            } else if (Condition.isNotUndefined(file) && Condition.isNotNull(file) && Condition.isNothing(file.rowData)) {
+                console.warn("Was unable to store file. Raw data was not provided");
             }
         }
     }
