@@ -73,6 +73,9 @@ export class ExpresionBuilder {
                 .replace("}", "");
             const split = property.split(".")
 
+            //TODO Some field mite be like this ".where(e => e.exp().equal(() => e.childEntity?.childName, null))"
+            //     This will currently not work, add support for this.
+            //     Example firebase code: .where("childEntity.childName", "==", null).get(), this will work.
             if (split.length < 2 || split.length > 2)
                 throw new Error(`Unable to extract property out of function: ${propertyFun.toString()}`)
 

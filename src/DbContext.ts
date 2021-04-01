@@ -8,6 +8,7 @@ import EmulatorConfig from "./entities/EmulatorConfig";
 import DecoratorTool from "./tools/DecoratorTool";
 import Condition from "./tools/Condition";
 import StorageFile from "./entities/StorageFile";
+import {IgnoreStateCheckOn} from "./entities/enums/IgnoreStateCheckOn";
 import UploadTask = firebase.storage.UploadTask;
 
 let canConfigEmulator = true;
@@ -61,7 +62,7 @@ export default class DbContext {
         }
     }
 
-    public async set<T extends AbstractEntity>(entity: T | undefined, ignoreValidation = false) {
+    public async set<T extends AbstractEntity>(entity: T | undefined) {
 
         this.validateEntityBeforeWrite(entity);
 
@@ -77,7 +78,9 @@ export default class DbContext {
         const ref = this.db.collection((<T>entity).constructor.name)
             .doc((<T>entity).id);
 
-        this.batch.set(ref, (<T>entity).asObject(ignoreValidation));
+        (<T>entity).currentStateToIgnore = IgnoreStateCheckOn.Set;
+
+        this.batch.set(ref, (<T>entity).asObject());
     }
 
     public uploadFile(file: StorageFile) {
@@ -96,6 +99,8 @@ export default class DbContext {
 
         const ref = this.db.collection((<T>entity).constructor.name)
             .doc((<T>entity).id);
+
+        (<T>entity).currentStateToIgnore = IgnoreStateCheckOn.Update;
 
         this.batch.update(ref, (<T>entity).asObject());
     }

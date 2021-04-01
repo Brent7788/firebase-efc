@@ -16,7 +16,7 @@ export default class DbSetResult<T extends AbstractEntity> {
     private _take: number | undefined;
     private _startAt: number | undefined;
     private _limitReads: number | undefined;
-    private readonly textToSearch: string | undefined;
+    private textToSearch: string | undefined;
 
     public observableEntities: ObservableEntity<T>[];
 
@@ -47,6 +47,16 @@ export default class DbSetResult<T extends AbstractEntity> {
         return this;
     }
 
+    public search(textToSearch: string) {
+
+        if (Condition.isStringNotEmpty(this.textToSearch))
+            throw new Error("A search has already been set");
+
+        this.textToSearch = textToSearch;
+
+        return this;
+    }
+
     public async firstAsync(): Promise<T> {
         const entity = await this.firstOrDefaultAsync();
 
@@ -64,7 +74,10 @@ export default class DbSetResult<T extends AbstractEntity> {
         for (const query of this.queries) {
             const querySnapshot = await query.get();
             if (!querySnapshot.empty) {
-                entity = this.setObservableEntity(querySnapshot.docs[0]);
+                const entities = await this.getObservableEntitiesFromQuerySnapshot(querySnapshot);
+
+                if (entities.length > 0)
+                    entity = entities[0];
             }
 
             if (Condition.isNotUndefined(entity)) {
@@ -143,9 +156,13 @@ export default class DbSetResult<T extends AbstractEntity> {
     }
 
     private searchObject(doc: any): boolean {
+        let textExistInObject = false;
+
+        if (Condition.isNothing(doc))
+            return textExistInObject;
+
         const docKeys = Object.keys(doc).filter(k => k !== "id" && k !== "documentPosition" && k !== "createdDate");
 
-        let textExistInObject = false;
 
         for (const docKey of docKeys) {
 
@@ -172,7 +189,7 @@ export default class DbSetResult<T extends AbstractEntity> {
         } else if (typeof value === "object") {
             containsInValue = this.searchObject(value);
 
-        } else if (Condition.stringContain(value.toString().toLowerCase(), <string>this.textToSearch)) {
+        } else if (Condition.stringContain(value.toString().toLowerCase(), (<string>this.textToSearch).toLowerCase())) {
             containsInValue = true;
         }
 
